@@ -2,53 +2,40 @@ pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
 
-function sort(data)
-    local n = #data
-    -- form a max heap
-    for i = flr(n / 2) + 1, 1, -1 do
-     -- m is the index of the max child
-     local parent, value, m = i, data[i], i + i
-     local key = value.key 
-     while m <= n do
-      -- find the max child
-      if ((m < n) and (data[m + 1].key > data[m].key)) m += 1
-      local mval = data[m]
-      if (key > mval.key) break
-      data[parent] = mval
-      parent = m
-      m += m
-     end
-     data[parent] = value
-    end 
-    -- read out the values,
-    -- restoring the heap property
-    -- after each step
-    for i = n, 2, -1 do
-     -- swap root with last
-     local value = data[i]
-     data[i], data[1] = data[1], value
-     -- restore the heap
-     local parent, terminate, m = 1, i - 1, 2
-     local key = value.key 
-     while m <= terminate do
-      local mval = data[m]
-      local mkey = mval.key
-      if (m < terminate) and (data[m + 1].key > mkey) then
-       m += 1
-       mval = data[m]
-       mkey = mval.key
-      end
-      if (key > mkey) break
-      data[parent] = mval
-      parent = m
-      m += m
-     end  
-     data[parent] = value
+function get_key_for_value( t, value )
+    for k,v in pairs(t) do
+      if v==value then return k end
     end
+    return 0
+  end
+
+function shallowcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in pairs(orig) do
+            copy[orig_key] = orig_value
+        end
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
 end
 
-function createnewRect(i1,j1,i2,j2,fColor,bColor)
-    newRect={x1=i1,y1=j1,x2=i2,y2=j2,fColor=fColor,bColor=bColor}
+function sort(arr) -- slow sort, expects {{key,obj}...}
+    for i=1,#arr do
+      for j=i,#arr do
+        if arr[j][1] < arr[i][1] then
+          add(arr,deli(arr,j),i) --slow swap
+        end
+      end
+    end
+  end
+
+function createnewRect(i1,j1,i2,j2,fColor,bColor,midpoint)
+    newRect={x1=i1,y1=j1,x2=i2,y2=j2,fColor=fColor,bColor=bColor,midpoint=0}
+    newRect.midpoint={x=getMidpoint(newRect)[1], y=getMidpoint(newRect)[2]}
     return newRect
 end
 
@@ -59,14 +46,15 @@ function splitRect(selectedRect, typeSplit)
     local y2=selectedRect.y2
     if typeSplit==1 then
         newx2=(x2-x1)/2+x1
-        add(allRects,createnewRect(x1,y1,newx2,y2,currentColor,playSurfaceCol))
-        add(allRects,createnewRect(newx2,y1,x2,y2,currentColor,playSurfaceCol))
+        add(allRects,createnewRect(x1,y1,newx2,y2,currentColor,playSurfaceCol),count(allRects)+1)
+        add(allRects,createnewRect(newx2,y1,x2,y2,currentColor,playSurfaceCol),count(allRects)+1)
     end
     if typeSplit==0 then
         newy2=(y2-y1)/2+y1
-        add(allRects,createnewRect(x1,y1,x2,newy2,currentColor,playSurfaceCol))
-        add(allRects,createnewRect(x1,newy2,x2,y2,currentColor,playSurfaceCol))
+        add(allRects,createnewRect(x1,y1,x2,newy2,currentColor,playSurfaceCol),count(allRects)+1)
+        add(allRects,createnewRect(x1,newy2,x2,y2,currentColor,playSurfaceCol),count(allRects)+1)
     end
+    del(allRects,selectedRect)
 end
     
 function drawnewRect(newRect)
@@ -80,15 +68,10 @@ function attemptSplit(selectedRect)
         if (countSplit%2==0) typeSplit=0
         splitRect(selectedRect, typeSplit)
         countSplit+=1
-        -- Delete previous rectangle
-        previousRectIndex=currentRectIndex
-        deli(allRects, previousRectIndex)
-        currentRectIndex=count(allRects)
-        allRects[currentRectIndex].fColor=selectColor
     else
-        selectedRect.bColor=8 -- Red
+        selectedRect.fColor=8 -- Red
         print("Not allowed!", maxX+2, 18,currentColor)
-        selectedRect.bColor=playSurfaceCol
+        selectedRect.fColor=currentColor
     end
 end
 
@@ -97,51 +80,46 @@ function area(selectedRect)
 end
 
 function nearestRect(selectedRect, direction)
-    allRectDistances={}
-    for i in all(allRects) do
-        -- if ((direction=="right")and(i.x1>selectedRect.x2)) add(allRectDistances, getDistance(selectedRect, i))
-        -- if ((direction=="left")and(i.x2<selectedRect.x1)) add(allRectDistances, getDistance(selectedRect, i))
-        -- if ((direction=="up")and(i.y2<selectedRect.y1)) add(allRectDistances, getDistance(selectedRect, i))
-        -- if ((direction=="down")and(i.y1>selectedRect.y2)) add(allRectDistances, getDistance(selectedRect, i))
-        if (direction=="up") add(allRectDistances, getDistance(selectedRect, i))
+    local allRectscopy = shallowcopy(allRects)
+    deli(allRectDistances,get_key_for_value(allRects,selectedRect))
+    
+    for i in all(allRectscopy) do
+        if ((direction=="right")and(i.midpoint.x>selectedRect.midpoint.x)) add(allRectDistances, getDistance(selectedRect, i)) circfill(i.midpoint.x,i.midpoint.y,1,8)
+        if ((direction=="left")and(i.midpoint.x<selectedRect.midpoint.x)) add(allRectDistances, getDistance(selectedRect, i)) circfill(i.midpoint.x,i.midpoint.y,1,8)
+        if ((direction=="up")and(i.midpoint.y<selectedRect.midpoint.y)) add(allRectDistances, getDistance(selectedRect, i)) circfill(i.midpoint.x,i.midpoint.y,1,8)
+        if ((direction=="down")and(i.midpoint.y>selectedRect.midpoint.y)) add(allRectDistances, getDistance(selectedRect, i)) circfill(i.midpoint.x,i.midpoint.y,1,8)
     end
-    allRectDistances=sort(allRectDistances)
+    if (count(allRectDistances)<1) return selectedRect
+    sort(allRectDistances)
     return allRectDistances[1][2]
 end
 
--- function getMidpoint(selectedRect)
---     return {(selectedRect.x2-selectedRect.x1)/2+x1
--- end
-
-function getDistance(rectA, rectB)
-    closestDistance=((rectA.x2-rectB.x2)^2+(rectA.y2-rectB.y2)^2)^0.5
-    return {((rectA.x2-rectB.x2)^2+(rectA.y2-rectB.y2)^2)^0.5, rectB}
+function getMidpoint(selectedRect) -- returns {x,y}
+    --return {,(selectedRect.y2-selectedRect.y1)/2+selectedRect.y1}
+    return {(selectedRect.x2-selectedRect.x1)/2+selectedRect.x1,(selectedRect.y2-selectedRect.y1)/2+selectedRect.y1}
 end
 
-function _init()
-        -- test sorting algo
-        srand(99)
-        i=1
-        testArray={}
-        while i<100 do 
-            add(testArray,flr(rnd(100)))
-            i+=1
-        end
-        testArrayUnsorted=testArray
-        -- sort(testArray)
-        --
-    previousRectIndex=1
-    currentRectIndex=1
+function getDistance(rectA, rectB) -- Return {number, rect}
+    closestDistance=((rectA.midpoint.x-rectB.midpoint.x)^2+(rectA.midpoint.y-rectB.midpoint.y)^2)^0.5
+    return {closestDistance, rectB}
+end
+
+function _init()        
+    printRectD={}
+    allRectDistances={{0,0}}
+    previousRectCount=0
+    previousRectIndex=2
+    currentRectIndex=2
     debug=1
     countScore=0
     countSplit=0
     typeSplit=0 -- "1" is vertical. "0" is horizontal.
     currentCur={x=64,y=64}
-    currentColor=11
+    currentColor=7
     selectColor=10
     maxX=80
     maxY=126
-    minArea=0
+    minArea=16
     playSurfaceCol=13
     allRects={}
     -- Create the first rectangle and that is the game surface
@@ -150,54 +128,71 @@ function _init()
 end
 
 function _update()
-    -- Control player
-    -- if (btn(⬅️)) verts.i-=1
-    -- if (btn(➡️)) verts.i+=1    
+    if ((countSplit==1)and(count(allRects)==3)) deli(allRects,1)
 end
 
 function _draw()
+    if count(allRects) <= 2 then
+        selectedRect=allRects[count(allRects)]
+    end
+    
     cls()
     for i in all(allRects) do
         drawnewRect(i)
     end
 
     -- Draw the selected rectangle
-    if btnp(⬆️) then 
-        if currentRectIndex < count(allRects) then
-            currentRectIndex+=1 
-        end
+    if btnp(➡️) then 
+        allRectDistances={}
         for i in all(allRects) do 
             i.fColor=currentColor
         end
-        -- nearestRect(allRects[currentRectIndex], "up").fColor=selectColor
-        allRects[currentRectIndex].fColor=selectColor allRects[currentRectIndex-1].fColor=currentColor
+        selectedRect=nearestRect(allRects[currentRectIndex], "right")
+        selectedRect.fColor=selectColor
+    end
+
+    if btnp(⬅️) then 
+        allRectDistances={}
+        for i in all(allRects) do 
+            i.fColor=currentColor
+        end
+        selectedRect=nearestRect(allRects[currentRectIndex], "left")
+        selectedRect.fColor=selectColor    
+    end
+
+    if btnp(⬆️) then 
+        allRectDistances={}
+        for i in all(allRects) do 
+            i.fColor=currentColor
+        end
+        selectedRect=nearestRect(allRects[currentRectIndex], "up")
+        selectedRect.fColor=selectColor
     end
     
     if btnp(⬇️) then 
-        if currentRectIndex-1 > 0 then
-            currentRectIndex-=1
+        allRectDistances={}
+        for i in all(allRects) do 
+            i.fColor=currentColor
         end
-        allRects[currentRectIndex].fColor=selectColor allRects[currentRectIndex+1].fColor=currentColor
+        selectedRect=nearestRect(allRects[currentRectIndex], "down")
+        selectedRect.fColor=selectColor
     end
 
     if (btnp(4)) currentColor=flr(rnd(15))
     
-    if count(allRects) <= 1 then
-        selectedRect=allRects[1]
-    else
-        selectedRect=allRects[currentRectIndex]
-    end
-    
-    if (btnp(5)) attemptSplit(selectedRect)
+    if (btnp(5)) attemptSplit(selectedRect) selectedRect=allRects[count(allRects)] selectedRect.fColor=selectColor
 
     print("score:"..countScore, maxX+2, 0,currentColor)
     print("split:"..countSplit, maxX+2, 6,currentColor)
     print("type:"..typeSplit, maxX+2, 12,currentColor)
     if debug==1 then
         -- print(closestDistance, maxX+2, 64, currentColor)
-        -- print(allRects[currentRectIndex].y2..":y2 "..": "..currentRectIndex, maxX+2, 64, currentColor)
+        print("thisRect: "..get_key_for_value(allRects, selectedRect), maxX+2, 59, currentColor)
+        print(selectedRect.midpoint.x..", "..selectedRect.midpoint.y..":midpoint "..get_key_for_value(allRects, selectedRect), maxX+2, 64, currentColor)
+        print("MaxRect: "..count(allRects), maxX+2, 69, currentColor)
         --print("current x: "..currentCur.x..", current x: "..currentCur.y, 0, 114,7)
-        print("rect count: "..count(allRects)..", area: "..area(selectedRect), 0, 120,7)
+        -- print("rect count: "..count(allRects)..", area: "..area(selectedRect), 0, 120,7)
+        -- print(getDistance(allRects[1],allRects[currentRectIndex])[1].."allrectcount: "..allRectDistances[1][1], 0, 115,7)
         -- print(testArrayUnsorted[1][2].." "..testArrayUnsorted[2][2].." "..testArrayUnsorted[3][2].." "..testArrayUnsorted[99][2], maxX+2, 64, currentColor)
         -- print(testArray[1][2].." "..testArray[2][2].." "..testArray[3][2].." "..testArray[99][2], maxX+2, 64+5, currentColor)
     end
