@@ -123,7 +123,11 @@ function findqualifiedRects(allRects)
                     if ( (j~=k) and (j.area==k.area) and (j.midpoint.x==k.midpoint.x)) then
                         for l in all(allRects) do
                             if ( (k~=l) and (k.area==l.area) and (k.midpoint.y==l.midpoint.y) and (i.midpoint.x==l.midpoint.x)) then
-                            add(qualRects,{i,j,k,l,countSplit}) -- Todo: Del i,j,k,l from allRects. Draw qualRects separately from allRects.
+                                add(qualRects,{i,j,k,l,splitsLeft=countSplit}) -- Todo: Del i,j,k,l from allRects. Draw qualRects separately from allRects.
+                                del(allRects,i)
+                                del(allRects,j)
+                                del(allRects,k)
+                                del(allRects,l)
                             end
                         end
                     end
@@ -132,6 +136,14 @@ function findqualifiedRects(allRects)
         end
     end
 end
+
+function doeachturn()
+    for i in all(qualRects) do 
+        i.splitsLeft-=1
+        if (i.splitsLeft==0) del(qualRects,i)
+    end
+end
+
 
 function _update()
 
@@ -153,7 +165,7 @@ function _update()
 
     if (btnp(4)) currentColor=flr(rnd(15))
     
-    if (btnp(5)) attemptSplit(selectedRect) selectedRect=allRects[count(allRects)] selectedRect.fColor=selectColor findqualifiedRects(allRects)
+    if (btnp(5)) attemptSplit(selectedRect) selectedRect=allRects[count(allRects)] selectedRect.fColor=selectColor findqualifiedRects(allRects) doeachturn()
 
     if count(allRects) <= 1 then -- Selected default rectangle if there is only 1 rectangle.
         selectedRect=allRects[count(allRects)]
@@ -167,16 +179,16 @@ function _draw()
         drawnewRect(i)
     end
 
-    if count(qualRects)>=4 then
-        for i in all(qualRects) do 
-            
-            i[1].fColor=flr(rnd(15))
-            i[2].fColor=flr(rnd(15))
-            i[3].fColor=flr(rnd(15))
-            i[4].fColor=flr(rnd(15))
-        
-            print(i[5],i[1].midpoint.x,i[1].midpoint.y,7)
-        end
+    for i in all(qualRects) do 
+        drawnewRect(i[1])
+        drawnewRect(i[2])
+        drawnewRect(i[3])
+        drawnewRect(i[4])
+        i[1].fColor=flr(rnd(15))
+        i[2].fColor=flr(rnd(15))
+        i[3].fColor=flr(rnd(15))
+        i[4].fColor=flr(rnd(15))
+        print(i.splitsLeft,i[1].midpoint.x,i[1].midpoint.y,7)
     end
 
     print("score:"..countScore, maxX+2, 0,currentColor)
