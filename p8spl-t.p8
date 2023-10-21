@@ -51,7 +51,7 @@ function drawnewRect(newRect)
 end
 
 function attemptSplit(selectedRect)
-    if selectedRect.area>minArea then
+    if (((selectedRect.y2 - selectedRect.y1)>2*minHeight)and((selectedRect.x2 - selectedRect.x1)>2*minWidth)) then
         if (countSplit%2>0) typeSplit=1
         if (countSplit%2==0) typeSplit=0
         splitRect(selectedRect, typeSplit)
@@ -78,13 +78,13 @@ function directionOps(direction)
     end
     allRectDistances={}
     for i in all(allRects) do
-        if ((direction=="right") and (i.midpoint.x>selectedRect.midpoint.x) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i)) circfill(i.midpoint.x,i.midpoint.y,1,8)
+        if ((direction=="right") and (i.midpoint.x>selectedRect.midpoint.x) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i))
         
-        if ((direction=="left") and (i.midpoint.x<selectedRect.midpoint.x) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i)) circfill(i.midpoint.x,i.midpoint.y,1,8)
+        if ((direction=="left") and (i.midpoint.x<selectedRect.midpoint.x) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i))
 
-        if ((direction=="up") and (i.midpoint.y<selectedRect.midpoint.y) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i)) circfill(i.midpoint.x,i.midpoint.y,1,8)
+        if ((direction=="up") and (i.midpoint.y<selectedRect.midpoint.y) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i))
         
-        if ((direction=="down") and (i.midpoint.y>selectedRect.midpoint.y) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i)) circfill(i.midpoint.x,i.midpoint.y,1,8)
+        if ((direction=="down") and (i.midpoint.y>selectedRect.midpoint.y) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i))
     end
     
     if (count(allRectDistances)==0) then
@@ -95,24 +95,6 @@ function directionOps(direction)
         allRectDistances[1][2].fColor=selectColor
         selectedRect=allRectDistances[1][2]
     end
-end
-
-function _init()      
-    qualRects={}
-    allRectDistances={{0,0}}
-    debug=1
-    countScore=0
-    countSplit=0
-    typeSplit=0 -- "1" is vertical. "0" is horizontal.
-    currentColor=7
-    selectColor=10
-    maxX=80
-    maxY=126
-    minArea=90
-    playSurfaceCol=13
-    allRects={}
-    -- Create first rect and add it to array.
-    add(allRects,createnewRect(0,0,maxX,maxY,playSurfaceCol,playSurfaceCol))
 end
 
 function findqualifiedRects(allRects)
@@ -144,9 +126,58 @@ function doeachturn()
     end
 end
 
+function bottomCheck(RectC)
+    local bottomIsClear=0
+    local bottomMatrix={}
+    local x1=RectC.x1+1
+    local x2=RectC.x2-1
+    local y1=RectC.y1
+    local y2=RectC.y2
+    local x9=x1
+    local xtemp=0
+    local ytemp=0
+    -- if (x2<x1) print("ouch") xtemp=x2 x2=x1 x1=xtemp ytemp=y2 y2=y1 y1=ytemp 
+
+    while (x9<=x2) do
+        add(bottomMatrix,{x9,y2})
+        x9=x9+minWidth
+    end
+
+    for j in all(bottomMatrix) do
+        if (j[2]>=126) bottomIsClear+=1 return bottomIsClear
+        if (pget(j[1],j[2]+1)~=0) bottomIsClear+=1 return bottomIsClear
+    end
+
+    return bottomIsClear
+end
+
+function _init()      
+    gravity=0.5
+    qualRects={}
+    allRectDistances={{0,0}}
+    debug=1
+    countScore=0
+    countSplit=0
+    typeSplit=0 -- "1" is vertical. "0" is horizontal.
+    currentColor=7
+    selectColor=10
+    maxX=80
+    maxY=126
+    -- minArea=90
+    minWidth=3
+    minHeight=2
+    playSurfaceCol=13
+    allRects={}
+    -- Create first rect and add it to array.
+    add(allRects,createnewRect(0,0,maxX,maxY,playSurfaceCol,playSurfaceCol))
+end
 
 function _update()
 
+    for i in all(allRects) do
+        if (bottomCheck(i)==0) i.y1=i.y1+1*gravity i.y2=i.y2+1*gravity 
+    end
+    
     if btnp(➡️) then 
         directionOps("right")
     end
@@ -163,7 +194,7 @@ function _update()
         directionOps("down")
     end
 
-    if (btnp(4)) currentColor=flr(rnd(15))
+    -- if (btnp(4)) currentColor=flr(rnd(15))
     
     if (btnp(5)) attemptSplit(selectedRect) selectedRect=allRects[count(allRects)] selectedRect.fColor=selectColor findqualifiedRects(allRects) doeachturn()
 
@@ -184,11 +215,11 @@ function _draw()
         drawnewRect(i[2])
         drawnewRect(i[3])
         drawnewRect(i[4])
-        i[1].fColor=flr(rnd(15))
-        i[2].fColor=flr(rnd(15))
-        i[3].fColor=flr(rnd(15))
-        i[4].fColor=flr(rnd(15))
-        print(i.splitsLeft,i[1].midpoint.x,i[1].midpoint.y,7)
+        i[1].fColor=11
+        i[2].fColor=11
+        i[3].fColor=11
+        i[4].fColor=11
+        print(i.splitsLeft,(max(max(i[1].midpoint.x,i[2].midpoint.x),i[3].midpoint.x)-min(min(i[1].midpoint.x,i[2].midpoint.x)-3,i[3].midpoint.x))/2+min(min(i[1].midpoint.x,i[2].midpoint.x),i[3].midpoint.x),min(min(i[1].y2,i[2].y2),i[3].y2)-3,7)
     end
 
     print("score:"..countScore, maxX+2, 0,currentColor)
@@ -196,7 +227,7 @@ function _draw()
     print("type:"..typeSplit, maxX+2, 12,currentColor)
     
     if debug==1 then
-        print("rArea: "..selectedRect.area, maxX+2, 70,currentColor)
+        -- print("rArea: "..selectedRect.area, maxX+2, 70,currentColor)
         -- print("sRect: "..get_key_for_value(allRects,selectedRect), maxX+2, 70,currentColor)
         -- print("rectC: "..count(allRects), maxX+2, 64,currentColor)
         -- print("qRect: "..count(qualRects), maxX+2, 76,currentColor)
