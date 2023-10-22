@@ -2,6 +2,27 @@ pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
 
+function _init()   
+    netherY=128   
+    gravity=3
+    qualRects={}
+    allRectDistances={{0,0}}
+    debug=1
+    countScore=0
+    countSplit=0
+    typeSplit=0 -- "1" is vertical. "0" is horizontal.
+    currentColor=7
+    selectColor=10
+    maxX=80
+    maxY=126
+    -- minArea=90
+    minWidth=3
+    minHeight=2
+    playSurfaceCol=13
+    allRects={}
+    -- Create first rect and add it to array.
+    add(allRects,createnewRect(0,0,maxX,maxY,playSurfaceCol,playSurfaceCol))
+end
 
 function get_key_for_value( t, value )
     for k,v in pairs(t) do
@@ -10,7 +31,7 @@ function get_key_for_value( t, value )
     return 0
   end
 
-function sort(arr) -- slow sort, expects {{key,obj}...}
+function sort(arr) -- Slow sort, expects {{key,obj}...}. Returns array in ascending values of key.
     for i=1,#arr do
       for j=i,#arr do
         if arr[j][1] < arr[i][1] then
@@ -124,6 +145,7 @@ function doeachturn()
         i.splitsLeft-=1
         if (i.splitsLeft==0) del(qualRects,i)
     end
+    findtop()
 end
 
 function bottomCheck(RectC)
@@ -151,31 +173,89 @@ function bottomCheck(RectC)
     return bottomIsClear
 end
 
-function _init()      
-    gravity=0.5
-    qualRects={}
-    allRectDistances={{0,0}}
-    debug=1
-    countScore=0
-    countSplit=0
-    typeSplit=0 -- "1" is vertical. "0" is horizontal.
-    currentColor=7
-    selectColor=10
-    maxX=80
-    maxY=126
-    -- minArea=90
-    minWidth=3
-    minHeight=2
-    playSurfaceCol=13
-    allRects={}
-    -- Create first rect and add it to array.
-    add(allRects,createnewRect(0,0,maxX,maxY,playSurfaceCol,playSurfaceCol))
-end
+function findtop()
+    possibleRects={}
+    for i=0, maxX, 1 do  
+        if (pget(i,0)==0) then -- find x1 if first pixel is black (eg empty)
+            for j=minWidth, maxX+1, 1 do -- then try to find x2
+                if ((pget(j,0)~=0) or ((j==maxX)and(pget(maxX,0)==0)) )then -- upon hitting the first pixel that is not black
+                    for k=minHeight, 126, 1 do -- go down and try to find y2
+                        if (pget(j-1,k)~=0) then -- upon hitting the first pixel below that is not black
+                            newRect=createnewRect(i,0-netherY,j-1,k-1-netherY,currentColor,playSurfaceCol)  -- netherY for rectangles to appear off screen first
+                            add(possibleRects,{newRect.area,newRect})
+                            if (count(possibleRects)>2) break
+                        end
+                        if (count(possibleRects)>2) break                        
+                    end
+                    if (count(possibleRects)>2) break
+                end
+                if (count(possibleRects)>2) break
+            end
+            if (count(possibleRects)>2) break
+        end
+        if (count(possibleRects)>2) break
+    end                     
+
+
+
+    for i=40, maxX, 1 do  
+        if (pget(i,0)==0) then -- find x1 if first pixel is black (eg empty)
+            for j=minWidth, maxX+1, 1 do -- then try to find x2
+                if ((pget(j,0)~=0))then -- upon hitting the first pixel that is not black
+                    for k=minHeight, 126, 1 do -- go down and try to find y2
+                        if (pget(j-1,k)~=0) then -- upon hitting the first pixel below that is not black
+                            newRect=createnewRect(i,0-netherY,j-1,k-1-netherY,currentColor,playSurfaceCol)  -- netherY for rectangles to appear off screen first
+                            add(possibleRects,{newRect.area,newRect})
+                            if (count(possibleRects)>4) break
+                        end
+                        if (count(possibleRects)>4) break                        
+                    end
+                    if (count(possibleRects)>4) break
+                end
+                
+                if ((j==maxX)and(pget(maxX,0)==0)) then 
+                    for k=minHeight, 126, 1 do -- go down and try to find y2
+                        if (pget(j-1,k)==0) then -- upon hitting the first pixel below that is not black
+                            newRect=createnewRect(i,0-netherY,j-1,k-1-netherY,currentColor,playSurfaceCol)  -- netherY for rectangles to appear off screen first
+                            add(possibleRects,{newRect.area,newRect})
+                            if (count(possibleRects)>4) break
+                        end
+                        if (count(possibleRects)>4) break                        
+                    end
+                    if (count(possibleRects)>4) break
+                end
+                if (count(possibleRects)>4) break
+            end
+            if (count(possibleRects)>4) break
+        end
+        if (count(possibleRects)>4) break
+    end                     
+
+
+
+
+
+    if (count(possibleRects)>0) then
+        sort(possibleRects)
+        add(allRects,possibleRects[(count(possibleRects))][2])
+        return 1
+    else
+        return 0
+    end
+end     
 
 function _update()
 
     for i in all(allRects) do
-        if (bottomCheck(i)==0) i.y1=i.y1+1*gravity i.y2=i.y2+1*gravity 
+        if (bottomCheck(i)==0) i.y1=i.y1+1*gravity i.y2=i.y2+1*gravity -- i.midpoint=getMidpoint(i)
+    end
+
+    if count(qualRects)>0 then
+        for j in all(qualRects) do
+                for k=1, 4, 1 do
+                    if (bottomCheck(j[k])==0) j[k].y1=j[k].y1+1*gravity j[k].y2=j[k].y2+1*gravity -- j[k].midpoint=getMidpoint(j[k])
+                end 
+        end
     end
     
     if btnp(➡️) then 
