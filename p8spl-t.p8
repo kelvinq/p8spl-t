@@ -3,8 +3,9 @@ version 41
 __lua__
 
 function _init()   
+    delRects={}
     netherY=128   
-    gravity=3
+    gravity=1
     qualRects={}
     allRectDistances={{0,0}}
     debug=1
@@ -24,7 +25,7 @@ function _init()
     add(allRects,createnewRect(0,0,maxX,maxY,playSurfaceCol,playSurfaceCol))
 end
 
-function get_key_for_value( t, value )
+function get_key_for_value(t, value)
     for k,v in pairs(t) do
       if v==value then return k end
     end
@@ -77,6 +78,7 @@ function attemptSplit(selectedRect)
         if (countSplit%2==0) typeSplit=0
         splitRect(selectedRect, typeSplit)
         countSplit+=1
+        doeachturn()
     else
         selectedRect.fColor=8 -- Red
         print("Not allowed!", maxX+2, 18,currentColor)
@@ -100,11 +102,8 @@ function directionOps(direction)
     allRectDistances={}
     for i in all(allRects) do
         if ((direction=="right") and (i.midpoint.x>selectedRect.midpoint.x) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i))
-        
         if ((direction=="left") and (i.midpoint.x<selectedRect.midpoint.x) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i))
-
         if ((direction=="up") and (i.midpoint.y<selectedRect.midpoint.y) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i))
-        
         if ((direction=="down") and (i.midpoint.y>selectedRect.midpoint.y) and get_key_for_value(allRects,selectedRect)~=get_key_for_value(allRects,i)) add(allRectDistances, getDistance(selectedRect, i))
     end
     
@@ -118,7 +117,7 @@ function directionOps(direction)
     end
 end
 
-function findqualifiedRects(allRects)
+function findqualifiedRects(allRects)   -- Find all rectangles that are evenly split and qualifies for split countdown scoring.
     for i in all(allRects) do 
         for j in all(allRects) do 
             if ((i~=j) and  (i.area==j.area) and (i.midpoint.y==j.midpoint.y)) then
@@ -126,7 +125,7 @@ function findqualifiedRects(allRects)
                     if ( (j~=k) and (j.area==k.area) and (j.midpoint.x==k.midpoint.x)) then
                         for l in all(allRects) do
                             if ( (k~=l) and (k.area==l.area) and (k.midpoint.y==l.midpoint.y) and (i.midpoint.x==l.midpoint.x)) then
-                                add(qualRects,{i,j,k,l,splitsLeft=countSplit}) -- Todo: Del i,j,k,l from allRects. Draw qualRects separately from allRects.
+                                add(qualRects,{i,j,k,l,splitsLeft=countSplit}) 
                                 del(allRects,i)
                                 del(allRects,j)
                                 del(allRects,k)
@@ -143,22 +142,22 @@ end
 function doeachturn()
     for i in all(qualRects) do 
         i.splitsLeft-=1
-        if (i.splitsLeft==0) del(qualRects,i)
+        if (i.splitsLeft==0) countScore=countScore+i[1].area+i[2].area+i[3].area+i[4].area add(delRects,i) del(qualRects,i)
+        -- i.midpoint.x=getMidpoint(i)[1]  i.midpoint.y=getMidpoint(i)[2]
     end
-    findtop()
+    for j in all(allRects) do 
+        -- j.midpoint.x=getMidpoint(i)[1]  j.midpoint.y=getMidpoint(i)[2]
+    end
+    addnewRects()
 end
 
 function bottomCheck(RectC)
     local bottomIsClear=0
     local bottomMatrix={}
-    local x1=RectC.x1+1
-    local x2=RectC.x2-1
-    local y1=RectC.y1
-    local y2=RectC.y2
-    local x9=x1
-    local xtemp=0
-    local ytemp=0
-    -- if (x2<x1) print("ouch") xtemp=x2 x2=x1 x1=xtemp ytemp=y2 y2=y1 y1=ytemp 
+    local x1=RectC.x1+1  local x2=RectC.x2-1    local y2=RectC.y2   local x9=x1
+    -- local y1=RectC.y1
+    -- local xtemp=0
+    -- local ytemp=0
 
     while (x9<=x2) do
         add(bottomMatrix,{x9,y2})
@@ -166,94 +165,54 @@ function bottomCheck(RectC)
     end
 
     for j in all(bottomMatrix) do
-        if (j[2]>=126) bottomIsClear+=1 return bottomIsClear
+        if (j[2]>=maxY) bottomIsClear+=1 return bottomIsClear
         if (pget(j[1],j[2]+1)~=0) bottomIsClear+=1 return bottomIsClear
     end
 
     return bottomIsClear
 end
 
-function findtop()
+function addnewRects()
     possibleRects={}
-    for i=0, maxX, 1 do  
-        if (pget(i,0)==0) then -- find x1 if first pixel is black (eg empty)
-            for j=minWidth, maxX+1, 1 do -- then try to find x2
-                if ((pget(j,0)~=0) or ((j==maxX)and(pget(maxX,0)==0)) )then -- upon hitting the first pixel that is not black
-                    for k=minHeight, 126, 1 do -- go down and try to find y2
-                        if (pget(j-1,k)~=0) then -- upon hitting the first pixel below that is not black
-                            newRect=createnewRect(i,0-netherY,j-1,k-1-netherY,currentColor,playSurfaceCol)  -- netherY for rectangles to appear off screen first
-                            add(possibleRects,{newRect.area,newRect})
-                            if (count(possibleRects)>2) break
-                        end
-                        if (count(possibleRects)>2) break                        
-                    end
-                    if (count(possibleRects)>2) break
-                end
-                if (count(possibleRects)>2) break
-            end
-            if (count(possibleRects)>2) break
+
+    local y0colors={}
+    local x2colors={}
+
+    local x1=0  local y1=0  local x2=0  local y2=0
+
+    for i=0, maxX, 1 do
+        if pget(i,0)==0 then add(y0colors,{i,0})
         end
-        if (count(possibleRects)>2) break
-    end                     
+    end
 
+    if (count(y0colors)>0) x1=y0colors[1][1] x2=y0colors[count(y0colors)][1]
 
-
-    for i=40, maxX, 1 do  
-        if (pget(i,0)==0) then -- find x1 if first pixel is black (eg empty)
-            for j=minWidth, maxX+1, 1 do -- then try to find x2
-                if ((pget(j,0)~=0))then -- upon hitting the first pixel that is not black
-                    for k=minHeight, 126, 1 do -- go down and try to find y2
-                        if (pget(j-1,k)~=0) then -- upon hitting the first pixel below that is not black
-                            newRect=createnewRect(i,0-netherY,j-1,k-1-netherY,currentColor,playSurfaceCol)  -- netherY for rectangles to appear off screen first
-                            add(possibleRects,{newRect.area,newRect})
-                            if (count(possibleRects)>4) break
-                        end
-                        if (count(possibleRects)>4) break                        
-                    end
-                    if (count(possibleRects)>4) break
-                end
-                
-                if ((j==maxX)and(pget(maxX,0)==0)) then 
-                    for k=minHeight, 126, 1 do -- go down and try to find y2
-                        if (pget(j-1,k)==0) then -- upon hitting the first pixel below that is not black
-                            newRect=createnewRect(i,0-netherY,j-1,k-1-netherY,currentColor,playSurfaceCol)  -- netherY for rectangles to appear off screen first
-                            add(possibleRects,{newRect.area,newRect})
-                            if (count(possibleRects)>4) break
-                        end
-                        if (count(possibleRects)>4) break                        
-                    end
-                    if (count(possibleRects)>4) break
-                end
-                if (count(possibleRects)>4) break
-            end
-            if (count(possibleRects)>4) break
+    for j=0, maxY, 1 do
+        if pget(x2,j)==0 then add(x2colors,{x2,j})
         end
-        if (count(possibleRects)>4) break
-    end                     
+    end
 
-
-
-
+    if (count(x2colors)>0) y2=x2colors[count(x2colors)][2] add(possibleRects,{x1,y1,x2,y2})
 
     if (count(possibleRects)>0) then
-        sort(possibleRects)
-        add(allRects,possibleRects[(count(possibleRects))][2])
+        add(allRects,createnewRect(x1,y1-netherY,x2,y2-netherY,currentColor,playSurfaceCol))
         return 1
     else
         return 0
     end
+
 end     
 
 function _update()
 
     for i in all(allRects) do
-        if (bottomCheck(i)==0) i.y1=i.y1+1*gravity i.y2=i.y2+1*gravity -- i.midpoint=getMidpoint(i)
+        if (bottomCheck(i)==0) i.y1=i.y1+1*gravity i.y2=i.y2+1*gravity
     end
 
     if count(qualRects)>0 then
         for j in all(qualRects) do
                 for k=1, 4, 1 do
-                    if (bottomCheck(j[k])==0) j[k].y1=j[k].y1+1*gravity j[k].y2=j[k].y2+1*gravity -- j[k].midpoint=getMidpoint(j[k])
+                    if (bottomCheck(j[k])==0) j[k].y1=j[k].y1+1*gravity j[k].y2=j[k].y2+1*gravity
                 end 
         end
     end
@@ -276,7 +235,7 @@ function _update()
 
     -- if (btnp(4)) currentColor=flr(rnd(15))
     
-    if (btnp(5)) attemptSplit(selectedRect) selectedRect=allRects[count(allRects)] selectedRect.fColor=selectColor findqualifiedRects(allRects) doeachturn()
+    if (btnp(5)) attemptSplit(selectedRect) selectedRect=allRects[count(allRects)] selectedRect.fColor=selectColor findqualifiedRects(allRects) -- doeachturn()
 
     if count(allRects) <= 1 then -- Selected default rectangle if there is only 1 rectangle.
         selectedRect=allRects[count(allRects)]
