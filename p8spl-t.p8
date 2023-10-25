@@ -3,6 +3,7 @@ version 41
 __lua__
 
 function _init()   
+    minRects={}
     delRects={}
     netherY=128   
     gravity=1
@@ -16,9 +17,8 @@ function _init()
     selectColor=10
     maxX=80
     maxY=126
-    -- minArea=90
-    minWidth=3
-    minHeight=2
+    minWidth=5
+    minHeight=5
     playSurfaceCol=13
     allRects={}
     -- Create first rect and add it to array.
@@ -82,6 +82,7 @@ function attemptSplit(selectedRect)
     else
         selectedRect.fColor=8 -- Red
         print("Not allowed!", maxX+2, 18,currentColor)
+        selectedRect.fColor=8 -- Red
     end
 end
 
@@ -142,13 +143,15 @@ end
 function doeachturn()
     for i in all(qualRects) do 
         i.splitsLeft-=1
-        if (i.splitsLeft==0) countScore=countScore+i[1].area+i[2].area+i[3].area+i[4].area add(delRects,i) del(qualRects,i)
+        if (i.splitsLeft==0) countScore=countScore+flr(sqrt(i[1].area+i[2].area+i[3].area+i[4].area)) add(delRects,i) del(qualRects,i)
         -- i.midpoint.x=getMidpoint(i)[1]  i.midpoint.y=getMidpoint(i)[2]
     end
     for j in all(allRects) do 
         -- j.midpoint.x=getMidpoint(i)[1]  j.midpoint.y=getMidpoint(i)[2]
     end
+    
     addnewRects()
+    
 end
 
 function bottomCheck(RectC)
@@ -203,6 +206,17 @@ function addnewRects()
 
 end     
 
+function detectNoTurns()
+    minRects={}
+    for i in all(allRects) do
+        if (((i.x2-i.x1)<=(minWidth*2)) or ((i.y2-i.y1)<=(minHeight*2))) add(minRects,i)
+    end
+end
+
+function deathScreen()
+    for i in all(allRects) do i.fColor=8 print("No more splits left!",64,64,14) end
+end
+
 function _update()
 
     for i in all(allRects) do
@@ -235,7 +249,7 @@ function _update()
 
     -- if (btnp(4)) currentColor=flr(rnd(15))
     
-    if (btnp(5)) attemptSplit(selectedRect) selectedRect=allRects[count(allRects)] selectedRect.fColor=selectColor findqualifiedRects(allRects) -- doeachturn()
+    if (btnp(5)) attemptSplit(selectedRect) selectedRect=allRects[count(allRects)] selectedRect.fColor=selectColor findqualifiedRects(allRects) detectNoTurns()
 
     if count(allRects) <= 1 then -- Selected default rectangle if there is only 1 rectangle.
         selectedRect=allRects[count(allRects)]
@@ -261,6 +275,8 @@ function _draw()
         print(i.splitsLeft,(max(max(i[1].midpoint.x,i[2].midpoint.x),i[3].midpoint.x)-min(min(i[1].midpoint.x,i[2].midpoint.x)-3,i[3].midpoint.x))/2+min(min(i[1].midpoint.x,i[2].midpoint.x),i[3].midpoint.x),min(min(i[1].y2,i[2].y2),i[3].y2)-3,7)
     end
 
+    if ((count(allRects)-count(minRects))==0) deathScreen() _init()
+
     print("score:"..countScore, maxX+2, 0,currentColor)
     print("split:"..countSplit, maxX+2, 6,currentColor)
     print("type:"..typeSplit, maxX+2, 12,currentColor)
@@ -269,7 +285,10 @@ function _draw()
         -- print("rArea: "..selectedRect.area, maxX+2, 70,currentColor)
         -- print("sRect: "..get_key_for_value(allRects,selectedRect), maxX+2, 70,currentColor)
         -- print("rectC: "..count(allRects), maxX+2, 64,currentColor)
-        -- print("qRect: "..count(qualRects), maxX+2, 76,currentColor)
+        print("Left:"..(count(allRects)-count(minRects)), maxX+2, 76,currentColor)
+        -- print("mRs: "..count(minRects), maxX+2, 82,currentColor)
+        -- print("s:x: "..selectedRect.x2-selectedRect.x1, maxX+2, 88,currentColor)
+        -- print("s:y: "..selectedRect.y2-selectedRect.y1, maxX+2, 96,currentColor)
         -- print("qcount: "..debugqcount, maxX+2, 82,currentColor)
         -- print("s:x: "..selectedRect.midpoint.x, maxX+2, 88,currentColor)
         -- print("s:y: "..selectedRect.midpoint.y, maxX+2, 94,currentColor)
