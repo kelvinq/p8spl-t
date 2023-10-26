@@ -145,9 +145,11 @@ function doeachturn()
         i.splitsLeft-=1
         if (i.splitsLeft==0) countScore=countScore+flr(sqrt(i[1].area+i[2].area+i[3].area+i[4].area)) add(delRects,i) del(qualRects,i)
         -- i.midpoint.x=getMidpoint(i)[1]  i.midpoint.y=getMidpoint(i)[2]
+        
     end
     for j in all(allRects) do 
         -- j.midpoint.x=getMidpoint(i)[1]  j.midpoint.y=getMidpoint(i)[2]
+        
     end
     
     addnewRects()
@@ -221,14 +223,16 @@ function _update()
 
     for i in all(allRects) do
         if (bottomCheck(i)==0) i.y1=i.y1+1*gravity i.y2=i.y2+1*gravity
+        i.midpoint={x=getMidpoint(i)[1], y=getMidpoint(i)[2]}
     end
 
     if count(qualRects)>0 then
         for j in all(qualRects) do
                 for k=1, 4, 1 do
                     if (bottomCheck(j[k])==0) j[k].y1=j[k].y1+1*gravity j[k].y2=j[k].y2+1*gravity
-                end 
-        end
+                    j[k].midpoint={x=getMidpoint(j[k])[1], y=getMidpoint(j[k])[2]} 
+                end
+        end 
     end
     
     if btnp(➡️) then 
@@ -278,14 +282,15 @@ function _draw()
     if ((count(allRects)-count(minRects))==0) deathScreen() _init()
 
     print("score:"..countScore, maxX+2, 0,currentColor)
-    print("split:"..countSplit, maxX+2, 6,currentColor)
+    print("#split:"..countSplit, maxX+2, 6,currentColor)
     print("type:"..typeSplit, maxX+2, 12,currentColor)
     
     if debug==1 then
         -- print("rArea: "..selectedRect.area, maxX+2, 70,currentColor)
         -- print("sRect: "..get_key_for_value(allRects,selectedRect), maxX+2, 70,currentColor)
         -- print("rectC: "..count(allRects), maxX+2, 64,currentColor)
-        print("Left:"..(count(allRects)-count(minRects)), maxX+2, 76,currentColor)
+        print("splits", maxX+2, 70,currentColor)
+        print("left:"..(count(allRects)-count(minRects)), maxX+2, 76,currentColor)
         -- print("mRs: "..count(minRects), maxX+2, 82,currentColor)
         -- print("s:x: "..selectedRect.x2-selectedRect.x1, maxX+2, 88,currentColor)
         -- print("s:y: "..selectedRect.y2-selectedRect.y1, maxX+2, 96,currentColor)
